@@ -1,0 +1,93 @@
+Aether Studio Enterprise V40Quantum Core Plugin Development GuideAether Studio Enterprise V40 features a dynamic, hot-reloadable plugin architecture. Plugins can hook directly into the IDE to add custom export builders, inject custom UI prefabs, register new event hooks, or even manipulate the virtual DOM (VDOM) and Aether UI directly.1. The Plugin ArchitecturePlugins are standard Python scripts placed inside the plugins/ directory (located in the same directory as the main IDE script).On startup (or when clicking "Rescan & Reload" in the Plugin Manager), Aether Studio scans the plugins/ folder, loads any .py files, and looks for classes that inherit from AetherPlugin.2. The Anatomy of a PluginTo create a plugin, you must create a subclass of AetherPlugin. Because the main IDE file contains this base class, you should import it from your main application file (e.g., v40.py).Minimal Example (plugins/hello_world.py):import tkinter as tk
+from tkinter import messagebox
+from v40 import AetherPlugin  # Assuming your main IDE file is named v40.py
+
+class HelloWorldPlugin(AetherPlugin):
+    # 1. Define Metadata (Required)
+    name = "Hello World Exporter"
+    author = "Jane Doe"
+    version = "1.0.0"
+    description = "Adds a simple 'Hello World' greeting and a custom build target."
+
+    # 2. Implement Lifecycle Hooks
+    def on_load(self, ide_instance):
+        """Called when the plugin is loaded into the IDE memory."""
+        self.ide = ide_instance
+        print(f"[{self.name}] Initialized!")
+        
+        # Add a custom export option to the top navbar
+        self.ide.export_builders["Hello World Format"] = self.export_hello_world
+
+    def on_unload(self, ide_instance):
+        """Called during cleanup (optional)."""
+        if "Hello World Format" in self.ide.export_builders:
+            del self.ide.export_builders["Hello World Format"]
+
+    # 3. Custom Logic
+    def export_hello_world(self):
+        project_name = self.ide.metadata.get("name", "Unknown App")
+        messagebox.showinfo("Export Successful", f"Hello World!\nProject {project_name} has been processed.")
+3. Core IDE Extension PointsBecause your plugin receives the ide_instance (the active AetherEnterpriseIDE object), you can access and modify almost anything in the IDE. Here are the safest and most officially supported extension points:A. Custom Compilers / Export BuildersYou can add new target languages or output formats to the top right "Compile App ▶" dropdown.# In your on_load method:
+ide_instance.export_builders["React (JSX) Architecture"] = self.build_react
+
+def build_react(self):
+    # Iterate over components and generate React code
+    for comp_id, comp_data in self.ide.components.items():
+        print(comp_data["type"], comp_data["layout"])
+    # Write to file, update UI, etc.
+Note: The IDE automatically calls self.refresh_build_targets() after plugins load, so your new builder will appear immediately.B. Injecting Custom Event HooksAether allows users to bind events to widgets (like <Button-1> or command). If you want to support exotic Tkinter events, just append them to the supported list.def on_load(self, ide_instance):
+    # Add Middle-Click and Double-Click support
+    ide_instance.supported_events.extend(["<Button-2>", "<Double-Button-1>"])
+Note: The IDE updates the event combobox automatically during the plugin load phase.C. Injecting Custom Prefabs (Templates)You can inject pre-made groups of widgets directly into the user's Toolbox under "CUSTOM PREFABS".def on_load(self, ide_instance):
+    my_prefab = [
+        {
+            "type": "Frame",
+            "id": "root_frame",
+            "props": {"bg": "app_surface", "bd": 1, "relief": "solid"},
+            "layout": {"relx": 0.2, "rely": 0.2, "relw": 0.5, "relh": 0.5, "parent": "root"}
+        },
+        {
+            "type": "Label",
+            "id": "title_label",
+            "props": {"text": "Injected Prefab!", "font": ["Segoe UI", 14, "bold"]},
+            "layout": {"relx": 0.1, "rely": 0.1, "relw": 0.8, "relh": 0.2, "parent": "root_frame"}
+        }
+    ]
+    # Inject into the custom templates dictionary
+    ide_instance.custom_templates["My Plugin UI"] = my_prefab
+D. Adding Custom Menu ItemsYou can inject tools into the main menu bar.def on_load(self, ide_instance):
+    # Create a new menu cascade
+    self.my_menu = tk.Menu(ide_instance.menubar, tearoff=0)
+    self.my_menu.add_command(label="Run Deep Analysis", command=self.analyze)
+    ide_instance.menubar.add_cascade(label="My Tool", menu=self.my_menu)
+E. Accessing the Application StateYou can read and modify the active project memory directly:ide_instance.components: An OrderedDict of all widgets currently on the canvas.ide_instance.metadata: A dictionary containing project properties (name, author, width, height).ide_instance.user_code: A dictionary containing the user's injected Python logic (imports, init, methods).ide_instance.push_history(): Call this method if your plugin modifies the components list, ensuring the user can "Undo" your plugin's action.ide_instance.refresh_all(): Call this method to force the VDOM to reconcile and re-render the canvas after you make programmatic changes.4. Advanced Example: The "Dark Mode Force" PluginThis plugin traverses the live VDOM to programmatically force all components into a high-contrast state, then forces a re-render.from v40 import AetherPlugin
+import tkinter as tk
+
+class ForceContrastPlugin(AetherPlugin):
+    name = "Contrast Forcer"
+    author = "Dev Team"
+    version = "1.1"
+    description = "Adds a tool to override all widget colors to High Contrast."
+
+    def on_load(self, ide_instance):
+        self.ide = ide_instance
+        self.menu = tk.Menu(self.ide.menubar, tearoff=0, bg=self.ide.ide_theme["surface"])
+        self.menu.add_command(label="Force High Contrast", command=self.apply_contrast)
+        self.ide.menubar.add_cascade(label="Contrast", menu=self.menu)
+
+    def apply_contrast(self):
+        # 1. Modify the virtual DOM
+        for comp in self.ide.components.values():
+            if "bg" in comp["props"]:
+                comp["props"]["bg"] = "#000000"
+            if "fg" in comp["props"]:
+                comp["props"]["fg"] = "#00ff00"
+                
+        # 2. Save state for Undo/Redo
+        self.ide.push_history()
+        
+        # 3. Tell the Quantum Core to reconcile and update the UI
+        self.ide.refresh_all()
+        
+        print("[Contrast] Applied successfully.")
+5. Security NoticeAether Studio includes an ASTSecurityValidator that prevents dangerous code (os, subprocess, eval) from being executed inside the Call Graph Logic Inspector.Important: This security shield applies to user-generated code inside the IDE. It does not apply to plugins. Plugins run natively as part of the host application. As a plugin developer, you have full system access, so please code responsibly and sanitize any inputs you process from the IDE canvas.
