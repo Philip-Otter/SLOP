@@ -1,7 +1,10 @@
 # ==============================================================================
-# AETHER STUDIO ENTERPRISE V40 - QUANTUM CORE ARCHITECTURE
-# Upgrades: VDOM Reconciliation, O(1) Hash Maps, AST Security Shield, MVC Export,
-#           ZLib Compressed History, Threaded Daemon Autosave.
+# AETHER STUDIO ENTERPRISE V45 - QUANTUM CORE ARCHITECTURE
+# Upgrades: Merged V40 Stability with V43 Enhancements (Edge Resizing, Scrollbars, 
+#           Code Snippet Injection, 1u Padding, MVC Architectures).
+#           UI/UX Revamp: Modern IDE Palettes, flat UI, breathing room.
+#           Hotfix 1: Resolved 'passself' snippet injection concatenation bug.
+#           Hotfix 2: Engineered ttk vs tk prop sanitization to prevent Tcl errors.
 # ==============================================================================
 import tkinter as tk
 from tkinter import ttk, scrolledtext, messagebox, filedialog, colorchooser
@@ -55,7 +58,6 @@ class ASTSecurityValidator(ast.NodeVisitor):
         self.generic_visit(node)
 
     def visit_Call(self, node):
-        # Prevent eval/exec and dunder builtins
         if isinstance(node.func, ast.Name) and node.func.id in {'eval', 'exec', '__import__'}:
             self.violations.append(f"Restricted function call: '{node.func.id}'")
         self.generic_visit(node)
@@ -70,26 +72,30 @@ def validate_code_safety(code_str):
     except SyntaxError as e:
         return False, [f"Syntax Error: {str(e)}"]
 
-# --- ENHANCED WIDGET MAPPER ---
+# --- ENHANCED WIDGET MAPPER & TTK SANITIZER ---
+UNSUPPORTED_TTK_PROPS = {"bg", "fg", "bd", "relief", "activebackground", "activeforeground", "insertbackground", "highlightthickness", "highlightbackground"}
+
 WIDGET_MAP = {
-    "Frame": {"icon": "🔲", "class": tk.Frame, "module": "tk", "props": {"bg": "app_surface", "bd": 1, "relief": "solid", "cursor": "arrow"}},
+    "Frame": {"icon": "🔲", "class": tk.Frame, "module": "tk", "props": {"bg": "app_surface", "bd": 0, "relief": "flat", "cursor": "arrow"}},
     "Label": {"icon": "🏷️", "class": tk.Label, "module": "tk", "props": {"text": "Label", "bg": "app_surface", "fg": "app_text", "font": ("Segoe UI", 10, "normal"), "bd": 0, "relief": "flat"}},
     "Button": {"icon": "🔘", "class": tk.Button, "module": "tk", "props": {"text": "Button", "bg": "app_accent", "fg": "app_accent_fg", "font": ("Segoe UI", 10, "bold"), "bd": 0, "relief": "flat", "cursor": "hand2"}},
-    "Entry": {"icon": "⌨️", "class": tk.Entry, "module": "tk", "props": {"bg": "app_input", "fg": "app_text", "font": ("Segoe UI", 10, "normal"), "bd": 1, "relief": "solid", "insertbackground": "app_text"}},
-    "Text": {"icon": "📄", "class": tk.Text, "module": "tk", "props": {"bg": "app_input", "fg": "app_text", "font": ("Consolas", 10, "normal"), "bd": 1, "relief": "solid", "insertbackground": "app_text", "text": ""}},
+    "Entry": {"icon": "⌨️", "class": tk.Entry, "module": "tk", "props": {"bg": "app_input", "fg": "app_text", "font": ("Segoe UI", 10, "normal"), "bd": 0, "relief": "flat", "insertbackground": "app_text"}},
+    "Text": {"icon": "📄", "class": tk.Text, "module": "tk", "props": {"bg": "app_input", "fg": "app_text", "font": ("Consolas", 10, "normal"), "bd": 0, "relief": "flat", "insertbackground": "app_text", "text": ""}},
     "Checkbutton": {"icon": "☑️", "class": tk.Checkbutton, "module": "tk", "props": {"text": "Checkbox", "bg": "app_surface", "fg": "app_text", "activebackground": "app_surface", "activeforeground": "app_accent"}},
-    "Canvas": {"icon": "🎨", "class": tk.Canvas, "module": "tk", "props": {"bg": "app_surface", "bd": 1, "relief": "sunken", "highlightthickness": 0}},
+    "Canvas": {"icon": "🎨", "class": tk.Canvas, "module": "tk", "props": {"bg": "app_surface", "bd": 0, "relief": "flat", "highlightthickness": 0}},
     "Scale": {"icon": "🎚️", "class": tk.Scale, "module": "tk", "props": {"orient": "horizontal", "bg": "app_surface", "fg": "app_accent", "bd": 0, "highlightthickness": 0}},
     "Progressbar": {"icon": "🔋", "class": ttk.Progressbar, "module": "ttk", "props": {"orient": "horizontal", "mode": "determinate", "value": 50}},
     "Combobox": {"icon": "🔽", "class": ttk.Combobox, "module": "ttk", "props": {"values": "Option 1, Option 2, Option 3", "state": "readonly", "font": ("Segoe UI", 10, "normal")}},
-    "Image": {"icon": "🖼️", "class": tk.Label, "module": "tk", "props": {"image_path": "", "text": "[ No Image Selected ]", "bg": "app_surface", "fg": "app_text"}},
-    "Console": {"icon": "🖥️", "class": scrolledtext.ScrolledText, "module": "scrolledtext", "props": {"bg": "#000000", "fg": "#00ff00", "font": ("Consolas", 9, "normal"), "state": "normal", "text": "System Ready..."}}
+    "Image": {"icon": "🖼️", "class": tk.Label, "module": "tk", "props": {"image_path": "", "text": "[ No Image Selected ]", "bg": "app_surface", "fg": "app_text", "bd": 0}},
+    "Padding (1u)": {"icon": "🟩", "class": tk.Frame, "module": "tk", "props": {"bg": "app_surface", "bd": 0, "relief": "flat", "cursor": "target"}},
+    "Console": {"icon": "🖥️", "class": scrolledtext.ScrolledText, "module": "scrolledtext", "props": {"bg": "#0B0F19", "fg": "#10B981", "font": ("Consolas", 9, "normal"), "state": "normal", "text": "System Ready...", "bd": 0}}
 }
 
+# MODERNIZED UI STYLE GUIDES
 THEMES = {
-    "Studio Light": {"bg": "#f3f3f3", "sidebar": "#ffffff", "surface": "#ffffff", "panel": "#f8f9fa", "text": "#242424", "text_dim": "#6e6e6e", "accent": "#005fb8", "accent_hover": "#004a94", "danger": "#c42b1c", "grid": "#e0e0e0"},
-    "Studio Dark": {"bg": "#1e1e1e", "sidebar": "#252526", "surface": "#2d2d30", "panel": "#3e3e42", "text": "#f1f1f1", "text_dim": "#a0a0a0", "accent": "#007acc", "accent_hover": "#0098ff", "danger": "#f14c4c", "grid": "#404040"},
-    "High Contrast": {"bg": "#000000", "sidebar": "#000000", "surface": "#000000", "panel": "#1a1a1a", "text": "#ffffff", "text_dim": "#ffff00", "accent": "#00ff00", "accent_hover": "#00cc00", "danger": "#ff0000", "grid": "#ffffff"}
+    "Aurora Dark": {"bg": "#0B0F19", "sidebar": "#111827", "surface": "#1F2937", "panel": "#374151", "text": "#F9FAFB", "text_dim": "#9CA3AF", "accent": "#3B82F6", "accent_hover": "#2563EB", "danger": "#EF4444", "grid": "#1F2937"},
+    "Lumina Light": {"bg": "#F9FAFB", "sidebar": "#FFFFFF", "surface": "#FFFFFF", "panel": "#F3F4F6", "text": "#111827", "text_dim": "#6B7280", "accent": "#0EA5E9", "accent_hover": "#0284C7", "danger": "#EF4444", "grid": "#E5E7EB"},
+    "Dracula Flow": {"bg": "#282A36", "sidebar": "#21222C", "surface": "#282A36", "panel": "#44475A", "text": "#F8F8F2", "text_dim": "#6272A4", "accent": "#FF79C6", "accent_hover": "#FF92DF", "danger": "#FF5555", "grid": "#44475A"}
 }
 
 class HoverTooltip:
@@ -104,7 +110,7 @@ class HoverTooltip:
         self.tooltip = tk.Toplevel(self.widget)
         self.tooltip.wm_overrideredirect(True)
         self.tooltip.wm_geometry(f"+{x}+{y}")
-        tk.Label(self.tooltip, text=self.text, background="#ffffe0", foreground="#000000", relief="solid", borderwidth=1, font=("Segoe UI", 8), padx=4, pady=2).pack()
+        tk.Label(self.tooltip, text=self.text, background="#1F2937", foreground="#F9FAFB", relief="flat", borderwidth=0, font=("Segoe UI", 8), padx=8, pady=4).pack()
 
     def leave(self, event=None):
         if self.tooltip: self.tooltip.destroy(); self.tooltip = None
@@ -113,7 +119,7 @@ class ToolbarButton(tk.Button):
     def __init__(self, master, hover_text="", **kw):
         self.default_bg = kw.pop('bg', '#f3f3f3')
         self.hover_bg = kw.pop('hover_bg', '#e0e0e0')
-        super().__init__(master, bg=self.default_bg, activebackground=self.hover_bg, **kw)
+        super().__init__(master, bg=self.default_bg, activebackground=self.hover_bg, bd=0, cursor="hand2", **kw)
         self.bind("<Enter>", self.on_enter)
         self.bind("<Leave>", self.on_leave)
         if hover_text: HoverTooltip(self, hover_text)
@@ -124,23 +130,23 @@ class ToolbarButton(tk.Button):
 class AetherEnterpriseIDE:
     def __init__(self, root):
         self.root = root
-        self.root.title("Aether Studio Enterprise V40 - Quantum Core")
+        self.root.title("Aether Studio Enterprise V45 - Quantum Core")
         self.root.geometry("1600x900")
         
-        self.current_theme_name = "Studio Dark"
+        self.current_theme_name = "Aurora Dark"
         self.ide_theme = THEMES[self.current_theme_name]
-        self.app_theme = {"app_bg": "#1e1e1e", "app_surface": "#2d2d30", "app_input": "#3e3e42", "app_text": "#f1f1f1", "app_accent": "#007acc", "app_accent_fg": "#ffffff"}
+        self.app_theme = {"app_bg": "#0B0F19", "app_surface": "#1F2937", "app_input": "#374151", "app_text": "#F9FAFB", "app_accent": "#3B82F6", "app_accent_fg": "#FFFFFF"}
 
         self.metadata = {"name": "EnterpriseApp", "author": "Developer", "width": 1000, "height": 700, "grid_size": 0.05, "show_grid": True}
         
         # O(1) Hash Map Architecture
         self.components = OrderedDict()
         self.live_widgets = {}
-        self.vdom_hashes = {}  # Tracks state hashes for O(K) rendering
+        self.vdom_hashes = {}  
         self.image_cache = {} 
         
         self.selected_id = None
-        self.drag_data = {"x": 0, "y": 0, "active": False}
+        self.drag_data = {"x": 0, "y": 0, "active": False, "mode": "drag"}
         self.current_project_file = None
         self.custom_templates = self.load_custom_templates()
         
@@ -153,6 +159,10 @@ class AetherEnterpriseIDE:
         # Extensibility API Registries
         self.supported_events = ["command", "<Button-1>", "<Enter>", "<Leave>", "<KeyRelease>", "<FocusIn>", "<FocusOut>"]
         self.export_builders = {"Python (MVC Architecture)": self.export_build_mvc, "Python (Tkinter Single File)": self.export_build_single}
+        
+        self.plugin_config_path = "aether_plugins.json"
+        self.disabled_plugins = self.load_plugin_config()
+        self.known_plugins = {}
         self.loaded_plugins = {}
 
         self.setup_ide_styles()
@@ -170,25 +180,33 @@ class AetherEnterpriseIDE:
                 time.sleep(300) # 5 minutes
                 if self.components and self.current_project_file:
                     try:
-                        # Deepcopy under lock isn't strictly needed in GIL for simple dicts, but safer to serialize
                         safe_copy = copy.deepcopy(list(self.components.values()))
                         save_path = self.current_project_file + ".autosave"
-                        payload = {"version": "40.0", "metadata": self.metadata, "app_theme": self.app_theme, "components": safe_copy, "user_code": self.user_code}
+                        payload = {"version": "45.0", "metadata": self.metadata, "app_theme": self.app_theme, "components": safe_copy, "user_code": self.user_code}
                         with open(save_path, 'w') as f: json.dump(payload, f)
-                        print(f"[AETHER] Quantum Autosave committed to {save_path}")
                     except Exception as e:
-                        print(f"[AETHER] Autosave failed: {e}")
-        
+                        pass
         t = threading.Thread(target=daemon_loop, daemon=True)
         t.start()
 
     # --- PLUGIN API ENGINE ---
+    def load_plugin_config(self):
+        if os.path.exists(self.plugin_config_path):
+            try:
+                with open(self.plugin_config_path, "r") as f: return json.load(f)
+            except: return []
+        return []
+        
+    def save_plugin_config(self):
+        with open(self.plugin_config_path, "w") as f: json.dump(self.disabled_plugins, f)
+
     def load_plugins(self):
         plugin_dir = "plugins"
         if not os.path.exists(plugin_dir): 
             os.makedirs(plugin_dir)
             return
-
+        self.known_plugins.clear()
+        
         for filename in os.listdir(plugin_dir):
             if filename.endswith(".py"):
                 filepath = os.path.join(plugin_dir, filename)
@@ -200,11 +218,14 @@ class AetherEnterpriseIDE:
                     spec.loader.exec_module(module)
 
                     for name, obj in inspect.getmembers(module):
-                        if inspect.isclass(obj) and issubclass(obj, AetherPlugin) and obj is not AetherPlugin:
-                            plugin_instance = obj()
-                            self.loaded_plugins[plugin_instance.name] = plugin_instance
-                            plugin_instance.on_load(self)
-                            print(f"[API] Loaded Plugin: {plugin_instance.name}")
+                        if inspect.isclass(obj) and obj.__name__ != "AetherPlugin":
+                            if any(base.__name__ == "AetherPlugin" for base in obj.__mro__):
+                                plugin_instance = obj()
+                                self.known_plugins[plugin_instance.name] = plugin_instance
+                                if plugin_instance.name not in self.disabled_plugins:
+                                    if plugin_instance.name not in self.loaded_plugins:
+                                        self.loaded_plugins[plugin_instance.name] = plugin_instance
+                                        plugin_instance.on_load(self)
                 except Exception as e:
                     print(f"[API ERROR] Failed to load {filename}: {e}")
         
@@ -216,16 +237,16 @@ class AetherEnterpriseIDE:
     def show_plugin_manager(self):
         win = tk.Toplevel(self.root)
         win.title("Quantum Plugin Manager")
-        win.geometry("700x450")
+        win.geometry("750x450")
         win.configure(bg=self.ide_theme["bg"])
         win.transient(self.root)
 
-        pane = tk.PanedWindow(win, orient=tk.HORIZONTAL, bg=self.ide_theme["panel"], sashwidth=2)
+        pane = tk.PanedWindow(win, orient=tk.HORIZONTAL, bg=self.ide_theme["panel"], sashwidth=2, bd=0)
         pane.pack(fill=tk.BOTH, expand=True)
 
-        list_frame = tk.Frame(pane, bg=self.ide_theme["surface"], width=200)
+        list_frame = tk.Frame(pane, bg=self.ide_theme["surface"], width=230)
         pane.add(list_frame)
-        tk.Label(list_frame, text="Active Plugins", bg=self.ide_theme["panel"], fg=self.ide_theme["text"], font=("Segoe UI", 9, "bold")).pack(fill=tk.X)
+        tk.Label(list_frame, text="Discovered Plugins", bg=self.ide_theme["panel"], fg=self.ide_theme["text"], font=("Segoe UI", 9, "bold")).pack(fill=tk.X)
         
         plugin_list = tk.Listbox(list_frame, bg=self.ide_theme["surface"], fg=self.ide_theme["text"], bd=0, highlightthickness=0, selectbackground=self.ide_theme["accent"])
         plugin_list.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
@@ -239,18 +260,28 @@ class AetherEnterpriseIDE:
         lbl_meta = tk.Label(detail_frame, text="", bg=self.ide_theme["surface"], fg=self.ide_theme["text_dim"], font=("Segoe UI", 9), anchor="w")
         lbl_meta.pack(fill=tk.X, padx=10)
 
-        desc_text = tk.Text(detail_frame, bg=self.ide_theme["bg"], fg=self.ide_theme["text"], font=("Segoe UI", 10), bd=1, relief="solid", height=10)
+        desc_text = tk.Text(detail_frame, bg=self.ide_theme["bg"], fg=self.ide_theme["text"], font=("Segoe UI", 10), bd=0, highlightthickness=1, highlightbackground=self.ide_theme["panel"], height=10)
         desc_text.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
         desc_text.config(state="disabled")
 
-        for p_name in self.loaded_plugins.keys(): plugin_list.insert(tk.END, p_name)
+        def refresh_plugin_list():
+            plugin_list.delete(0, tk.END)
+            for p_name in sorted(self.known_plugins.keys()):
+                status = "[OFF]" if p_name in self.disabled_plugins else "[ON]"
+                plugin_list.insert(tk.END, f"{status} {p_name}")
+
+        refresh_plugin_list()
 
         def on_plugin_select(evt):
             sel = plugin_list.curselection()
             if not sel: return
-            plugin = self.loaded_plugins.get(plugin_list.get(sel[0]))
+            status_str = plugin_list.get(sel[0])
+            p_name = status_str.split(" ", 1)[1]
+            plugin = self.known_plugins.get(p_name)
             if plugin:
-                lbl_title.config(text=plugin.name)
+                status = "DISABLED" if p_name in self.disabled_plugins else "ACTIVE"
+                lbl_title.config(text=f"{plugin.name} ({status})")
+                lbl_title.config(fg=self.ide_theme["danger"] if status == "DISABLED" else self.ide_theme["accent"])
                 lbl_meta.config(text=f"Version: {plugin.version} | Author: {plugin.author}")
                 desc_text.config(state="normal")
                 desc_text.delete(1.0, tk.END)
@@ -258,11 +289,69 @@ class AetherEnterpriseIDE:
                 desc_text.config(state="disabled")
 
         plugin_list.bind("<<ListboxSelect>>", on_plugin_select)
+
+        def toggle_plugin_state():
+            sel = plugin_list.curselection()
+            if not sel: return
+            status_str = plugin_list.get(sel[0])
+            p_name = status_str.split(" ", 1)[1]
+            plugin = self.known_plugins.get(p_name)
+            
+            if p_name in self.disabled_plugins:
+                self.disabled_plugins.remove(p_name)
+                self.loaded_plugins[p_name] = plugin
+                try: plugin.on_load(self)
+                except Exception as e: messagebox.showerror("Plugin Error", f"Failed to load '{p_name}':\n{str(e)}")
+            else:
+                if p_name not in self.disabled_plugins: self.disabled_plugins.append(p_name)
+                if p_name in self.loaded_plugins:
+                    try: plugin.on_unload(self)
+                    except Exception: pass
+                    del self.loaded_plugins[p_name]
+            
+            self.save_plugin_config()
+            self.refresh_build_targets()
+            self.render_toolbox()
+            idx = sel[0]
+            refresh_plugin_list()
+            plugin_list.selection_set(idx)
+            on_plugin_select(None)
+
         btn_frame = tk.Frame(detail_frame, bg=self.ide_theme["surface"])
         btn_frame.pack(fill=tk.X, padx=10, pady=10)
-        ToolbarButton(btn_frame, text="Rescan & Reload", bg=self.ide_theme["panel"], fg=self.ide_theme["text"], command=self.load_plugins).pack(side=tk.RIGHT)
+        ToolbarButton(btn_frame, text="Toggle ON/OFF", bg=self.ide_theme["panel"], fg=self.ide_theme["text"], command=toggle_plugin_state, padx=15, pady=5).pack(side=tk.LEFT)
+        ToolbarButton(btn_frame, text="Rescan Directory", bg=self.ide_theme["panel"], fg=self.ide_theme["text"], command=self.load_plugins, padx=15, pady=5).pack(side=tk.RIGHT)
 
-    # --- STANDARD V40 MACROS & UTILS ---
+    # --- STANDARD MACROS & UTILS ---
+    def get_component_snippets(self):
+        snippets = []
+        for c in self.components.values():
+            cid = f"self.{c['id']}"
+            t = c['type']
+            snippets.append(cid)
+            snippets.append(f"{cid}.config(bg='#000000', fg='#ffffff')")
+            snippets.append(f"{cid}.place_forget()")
+            if t in ['Entry', 'Combobox']:
+                snippets.append(f"{cid}.get()")
+                snippets.append(f"{cid}.delete(0, tk.END)")
+                snippets.append(f"{cid}.insert(0, '...')")
+            elif t in ['Text', 'Console']:
+                snippets.append(f"{cid}.get('1.0', tk.END)")
+                snippets.append(f"{cid}.delete('1.0', tk.END)")
+                snippets.append(f"{cid}.insert(tk.END, '...')")
+            elif t in ['Label', 'Button', 'Checkbutton', 'Radiobutton']:
+                snippets.append(f"{cid}['text'] = '...'")
+                snippets.append(f"{cid}.cget('text')")
+                if t != 'Label': snippets.append(f"{cid}.invoke()")
+            elif t == 'Canvas':
+                snippets.append(f"{cid}.create_line(0, 0, 100, 100, fill='red')")
+                snippets.append(f"{cid}.create_rectangle(10, 10, 50, 50, fill='blue')")
+                snippets.append(f"{cid}.delete('all')")
+            elif t == 'Progressbar':
+                snippets.append(f"{cid}['value'] = 50")
+                snippets.append(f"{cid}.step(10)")
+        return snippets
+
     def load_custom_templates(self):
         try:
             if os.path.exists("aether_templates.json"):
@@ -276,9 +365,9 @@ class AetherEnterpriseIDE:
     def highlight_syntax(self, target_widget, base_font=("Consolas", 10)):
         if not isinstance(target_widget, (tk.Text, scrolledtext.ScrolledText)): return
         code = target_widget.get("1.0", tk.END)
-        target_widget.tag_configure("kw", foreground="#569cd6", font=(base_font[0], base_font[1], "bold"))
-        target_widget.tag_configure("str", foreground="#ce9178")
-        target_widget.tag_configure("cmt", foreground="#6a9955")
+        target_widget.tag_configure("kw", foreground="#58A6FF", font=(base_font[0], base_font[1], "bold"))
+        target_widget.tag_configure("str", foreground="#A5D6FF")
+        target_widget.tag_configure("cmt", foreground="#8B949E")
         for t in ["kw", "str", "cmt"]: target_widget.tag_remove(t, "1.0", tk.END)
         for m in re.finditer(r'#.*', code): target_widget.tag_add("cmt", f"1.0+{m.start()}c", f"1.0+{m.end()}c")
         for m in re.finditer(r'(["\'])(?:(?=(\\?))\2.)*?\1', code): target_widget.tag_add("str", f"1.0+{m.start()}c", f"1.0+{m.end()}c")
@@ -294,7 +383,6 @@ class AetherEnterpriseIDE:
         if self.history_index < len(self.history) - 1:
             self.history = self.history[:self.history_index + 1]
         
-        # O(N) memory reduced to minimal bytes via ZLib Compression
         state_dump = json.dumps(list(self.components.values()))
         compressed_state = zlib.compress(state_dump.encode('utf-8'))
         
@@ -341,7 +429,6 @@ class AetherEnterpriseIDE:
         self.setup_ide_styles()
         self.setup_ui()
         
-        # Force Full Re-render on Theme Change
         self.vdom_hashes.clear()
         for w in list(self.live_widgets.values()): w.destroy()
         self.live_widgets.clear()
@@ -352,36 +439,41 @@ class AetherEnterpriseIDE:
         style = ttk.Style()
         style.theme_use("clam")
         style.configure("TPanedwindow", background=self.ide_theme["bg"])
-        style.configure("Treeview", background=self.ide_theme["surface"], foreground=self.ide_theme["text"], fieldbackground=self.ide_theme["surface"], borderwidth=0, font=("Segoe UI", 9))
-        style.configure("Treeview.Heading", background=self.ide_theme["panel"], foreground=self.ide_theme["accent"], font=("Segoe UI", 9, "bold"), borderwidth=0)
+        # Give Treeview room to breathe (No more squished rows)
+        style.configure("Treeview", background=self.ide_theme["surface"], foreground=self.ide_theme["text"], fieldbackground=self.ide_theme["surface"], borderwidth=0, font=("Segoe UI", 9), rowheight=28)
+        style.configure("Treeview.Heading", background=self.ide_theme["panel"], foreground=self.ide_theme["text"], font=("Segoe UI", 9, "bold"), borderwidth=0, padding=4)
         style.map("Treeview", background=[("selected", self.ide_theme["accent"])], foreground=[("selected", "#ffffff")])
+        
         style.configure("TNotebook", background=self.ide_theme["bg"], borderwidth=0)
-        style.configure("TNotebook.Tab", background=self.ide_theme["panel"], foreground=self.ide_theme["text"], font=("Segoe UI", 9))
+        style.configure("TNotebook.Tab", background=self.ide_theme["panel"], foreground=self.ide_theme["text"], font=("Segoe UI", 9, "bold"), padding=[12, 6])
         style.map("TNotebook.Tab", background=[("selected", self.ide_theme["surface"])], foreground=[("selected", self.ide_theme["accent"])])
+        
         style.configure("Horizontal.TProgressbar", troughcolor=self.ide_theme["panel"], background=self.ide_theme["accent"], bordercolor=self.ide_theme["bg"])
+        style.configure("TCombobox", padding=4, arrowcolor=self.ide_theme["text"], fieldbackground=self.ide_theme["input"] if "input" in self.ide_theme else self.ide_theme["bg"], borderwidth=0)
+        style.configure("Vertical.TScrollbar", background=self.ide_theme["panel"], bordercolor=self.ide_theme["surface"], arrowcolor=self.ide_theme["text"], troughcolor=self.ide_theme["bg"])
 
     def setup_menu(self):
         if hasattr(self, "menubar"): self.menubar.destroy()
-        self.menubar = tk.Menu(self.root, bg=self.ide_theme["bg"], fg=self.ide_theme["text"], activebackground=self.ide_theme["accent"], relief="flat")
+        self.menubar = tk.Menu(self.root, bg=self.ide_theme["bg"], fg=self.ide_theme["text"], activebackground=self.ide_theme["accent"], relief="flat", bd=0)
         
-        file_menu = tk.Menu(self.menubar, tearoff=0, bg=self.ide_theme["surface"], fg=self.ide_theme["text"])
+        file_menu = tk.Menu(self.menubar, tearoff=0, bg=self.ide_theme["surface"], fg=self.ide_theme["text"], bd=0)
         file_menu.add_command(label="Open Workspace (.aether)", command=self.load_project)
         file_menu.add_command(label="Save Workspace (.aether)", command=self.save_project)
         file_menu.add_separator()
         file_menu.add_command(label="Exit", command=self.root.quit)
         self.menubar.add_cascade(label="File", menu=file_menu)
         
-        view_menu = tk.Menu(self.menubar, tearoff=0, bg=self.ide_theme["surface"], fg=self.ide_theme["text"])
+        view_menu = tk.Menu(self.menubar, tearoff=0, bg=self.ide_theme["surface"], fg=self.ide_theme["text"], bd=0)
         view_menu.add_command(label="Toggle Viewport Grid", command=lambda: self.toggle_meta("show_grid"))
         view_menu.add_separator()
         view_menu.add_command(label="Open Call Graph Explorer", command=self.show_logic_visualizer)
         self.menubar.add_cascade(label="View", menu=view_menu)
         
-        plugin_menu = tk.Menu(self.menubar, tearoff=0, bg=self.ide_theme["surface"], fg=self.ide_theme["text"])
+        plugin_menu = tk.Menu(self.menubar, tearoff=0, bg=self.ide_theme["surface"], fg=self.ide_theme["text"], bd=0)
         plugin_menu.add_command(label="Plugin Manager...", command=self.show_plugin_manager)
         self.menubar.add_cascade(label="Plugins", menu=plugin_menu)
 
-        theme_menu = tk.Menu(self.menubar, tearoff=0, bg=self.ide_theme["surface"], fg=self.ide_theme["text"])
+        theme_menu = tk.Menu(self.menubar, tearoff=0, bg=self.ide_theme["surface"], fg=self.ide_theme["text"], bd=0)
         for t in THEMES.keys(): theme_menu.add_command(label=t, command=lambda name=t: self.change_ide_theme(name))
         self.menubar.add_cascade(label="Preferences", menu=theme_menu)
         
@@ -452,39 +544,45 @@ class AetherEnterpriseIDE:
         code = f"path = filedialog.askopenfilename()\nif path:\n    self.{entry_id}.delete(0, tk.END)\n    self.{entry_id}.insert(0, path)"
         self.get_comp_by_id(btn_id)["events"]["command"] = {"fn": f"browse_{btn_id}", "code": code}
 
-    # --- CALLGRAPH (O(N) Graph Viewer) ---
+    # --- CALLGRAPH EXPLORER ---
     def show_logic_visualizer(self):
         win = tk.Toplevel(self.root)
         win.title("Quantum Call Graph & Logic Explorer")
         win.geometry("1150x750")
         win.configure(bg=self.ide_theme["bg"])
         
-        pane = tk.PanedWindow(win, orient=tk.HORIZONTAL, bg=self.ide_theme["panel"], sashwidth=4)
+        pane = tk.PanedWindow(win, orient=tk.HORIZONTAL, bg=self.ide_theme["panel"], sashwidth=4, bd=0)
         pane.pack(fill=tk.BOTH, expand=True)
 
         graph_frame = tk.Frame(pane, bg=self.ide_theme["bg"])
         pane.add(graph_frame, width=600)
-        tk.Label(graph_frame, text="INTERACTIVE GRAPH (CLICK TO EDIT)", bg=self.ide_theme["bg"], fg=self.ide_theme["text"], font=("Segoe UI", 10, "bold")).pack(pady=5)
+        tk.Label(graph_frame, text="INTERACTIVE GRAPH (CLICK TO EDIT)", bg=self.ide_theme["bg"], fg=self.ide_theme["text_dim"], font=("Segoe UI", 10, "bold")).pack(pady=5)
         canvas = tk.Canvas(graph_frame, bg=self.ide_theme["surface"], highlightthickness=0)
         canvas.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
 
         info_frame = tk.Frame(pane, bg=self.ide_theme["surface"])
         pane.add(info_frame, width=550)
-        tk.Label(info_frame, text="LOGIC INSPECTOR & AST SHIELD", bg=self.ide_theme["surface"], fg=self.ide_theme["text"], font=("Segoe UI", 10, "bold")).pack(pady=5)
+        tk.Label(info_frame, text="LOGIC INSPECTOR & AST SHIELD", bg=self.ide_theme["surface"], fg=self.ide_theme["text_dim"], font=("Segoe UI", 10, "bold")).pack(pady=5)
         
         insert_f = tk.Frame(info_frame, bg=self.ide_theme["surface"])
         insert_f.pack(fill=tk.X, padx=5, pady=2)
-        tk.Label(insert_f, text="Inject Element ID:", bg=self.ide_theme["surface"], fg=self.ide_theme["text_dim"]).pack(side=tk.LEFT)
-        ref_cb_g = ttk.Combobox(insert_f, values=[f"self.{c['id']}" for c in self.components.values()], state="readonly", width=25)
+        tk.Label(insert_f, text="Inject Action:", bg=self.ide_theme["surface"], fg=self.ide_theme["text"]).pack(side=tk.LEFT)
+        
+        snippets = self.get_component_snippets()
+        ref_cb_g = ttk.Combobox(insert_f, values=snippets, state="readonly", width=35)
         ref_cb_g.pack(side=tk.LEFT, padx=5)
         
-        self.graph_info = scrolledtext.ScrolledText(info_frame, bg="#1e1e1e", fg="#d4d4d4", font=("Consolas", 10), insertbackground="white")
+        self.graph_info = scrolledtext.ScrolledText(info_frame, bg="#0B0F19", fg="#F9FAFB", font=("Consolas", 10), insertbackground="white", bd=0, highlightthickness=1, highlightbackground=self.ide_theme["panel"])
         self.graph_info.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
         self.graph_info.bind("<KeyRelease>", lambda e: self.schedule_highlight(self.graph_info, ("Consolas", 10)))
         
         def inject_ref_graph(*args):
             if ref_cb_g.get():
-                self.graph_info.insert(tk.INSERT, ref_cb_g.get())
+                current_code = self.graph_info.get("1.0", tk.END).strip()
+                # HOTFIX: Strip the placeholder to prevent snippet string concatenation
+                if current_code == "pass":
+                    self.graph_info.delete("1.0", tk.END)
+                self.graph_info.insert(tk.INSERT, ref_cb_g.get() + "\n")
                 ref_cb_g.set('')
         ref_cb_g.bind("<<ComboboxSelected>>", inject_ref_graph)
 
@@ -494,7 +592,6 @@ class AetherEnterpriseIDE:
             if not self.current_graph_edit_context: return
             new_code = self.graph_info.get("1.0", tk.END).strip()
             
-            # Fire AST Security Shield
             is_safe, violations = validate_code_safety(new_code)
             if not is_safe:
                 messagebox.showerror("Security Violation Blocked", "\n".join(violations))
@@ -511,7 +608,7 @@ class AetherEnterpriseIDE:
                 self.user_code["methods"] = self.user_code["methods"].replace(old_code, new_code)
                 messagebox.showinfo("Success", "Global Method Validated and Updated.")
 
-        ToolbarButton(info_frame, text="[ COMMIT LOGIC SECURELY ]", bg=self.ide_theme["accent"], hover_bg=self.ide_theme["accent_hover"], fg="white", font=("Segoe UI", 9, "bold"), command=commit_graph_code).pack(fill=tk.X, padx=5, pady=5)
+        ToolbarButton(info_frame, text="[ COMMIT LOGIC SECURELY ]", bg=self.ide_theme["accent"], hover_bg=self.ide_theme["accent_hover"], fg="white", font=("Segoe UI", 9, "bold"), command=commit_graph_code, pady=8).pack(fill=tk.X, padx=5, pady=5)
 
         shared_vars = {} 
         funcs = re.split(r'^\s*def\s+', self.user_code["methods"], flags=re.MULTILINE)[1:]
@@ -527,19 +624,32 @@ class AetherEnterpriseIDE:
 
         nodes_data = {}
         y_offset = 40
+        h = 40
         for c in self.components.values():
-            ui_id = canvas.create_rectangle(20, y_offset, 180, y_offset+50, fill=self.ide_theme["panel"], outline=self.ide_theme["text_dim"], width=1, tags=("node", c['id']))
-            canvas.create_text(100, y_offset+25, text=f"{c['id']}", fill=self.ide_theme["text"], font=("Segoe UI", 9, "bold"), tags=("node", c['id']))
+            text_id = canvas.create_text(0, 0, text=f"{c['id']}", fill=self.ide_theme["text"], font=("Segoe UI", 9, "bold"), tags=("node", c['id']))
+            bbox = canvas.bbox(text_id)
+            w = max(120, bbox[2] - bbox[0] + 30)
+            
+            ui_id = canvas.create_rectangle(20, y_offset, 20+w, y_offset+h, fill=self.ide_theme["panel"], outline=self.ide_theme["accent"], width=2, tags=("node", c['id']))
+            canvas.tag_raise(text_id)
+            canvas.coords(text_id, 20 + w/2, y_offset + h/2)
             nodes_data[ui_id] = {"type": "ui", "id": c['id'], "events": c.get("events", {})}
             
             if c.get("events", {}):
-                x_off = 300
+                x_off = 20 + w + 80
                 for event_trigger, action_data in c["events"].items():
                     action = action_data.get("fn", "")
                     if not action: continue
-                    act_id = canvas.create_rectangle(x_off, y_offset, x_off+180, y_offset+50, fill=self.ide_theme["bg"], outline=self.ide_theme["accent"], width=2, tags=("node", action))
-                    canvas.create_text(x_off+90, y_offset+25, text=f"{event_trigger} -> {action}", fill=self.ide_theme["text"], font=("Segoe UI", 8), tags=("node", action))
-                    canvas.create_line(180, y_offset+25, x_off, y_offset+25, arrow=tk.LAST, fill=self.ide_theme["text_dim"], width=1)
+                    
+                    lbl_text = f"{event_trigger} ➔ {action}"
+                    act_text_id = canvas.create_text(0, 0, text=lbl_text, fill=self.ide_theme["text"], font=("Segoe UI", 8), tags=("node", action))
+                    abbox = canvas.bbox(act_text_id)
+                    aw = max(150, abbox[2] - abbox[0] + 30)
+                    
+                    act_id = canvas.create_rectangle(x_off, y_offset, x_off+aw, y_offset+h, fill=self.ide_theme["bg"], outline=self.ide_theme["text_dim"], width=1, tags=("node", action))
+                    canvas.tag_raise(act_text_id)
+                    canvas.coords(act_text_id, x_off + aw/2, y_offset + h/2)
+                    canvas.create_line(20+w, y_offset+h/2, x_off, y_offset+h/2, arrow=tk.LAST, fill=self.ide_theme["text_dim"], width=1)
                     
                     is_global = action in func_bodies
                     nodes_data[act_id] = {
@@ -549,12 +659,12 @@ class AetherEnterpriseIDE:
                     }
                     for var_name, funcs_touching in shared_vars.items():
                         if action in funcs_touching:
-                            var_id = canvas.create_oval(x_off+220, y_offset, x_off+320, y_offset+50, fill=self.ide_theme["surface"], outline=self.ide_theme["danger"], width=2, tags=("node", var_name))
-                            canvas.create_text(x_off+270, y_offset+25, text=f"self.{var_name}", fill=self.ide_theme["danger"], font=("Segoe UI", 8), tags=("node", var_name))
-                            canvas.create_line(x_off+180, y_offset+25, x_off+220, y_offset+25, fill=self.ide_theme["danger"], dash=(2,2), width=1)
+                            var_id = canvas.create_oval(x_off+aw+40, y_offset, x_off+aw+140, y_offset+h, fill=self.ide_theme["surface"], outline=self.ide_theme["danger"], width=2, tags=("node", var_name))
+                            canvas.create_text(x_off+aw+90, y_offset+h/2, text=f"self.{var_name}", fill=self.ide_theme["danger"], font=("Segoe UI", 8), tags=("node", var_name))
+                            canvas.create_line(x_off+aw, y_offset+h/2, x_off+aw+40, y_offset+h/2, fill=self.ide_theme["danger"], dash=(2,2), width=1)
                             nodes_data[var_id] = {"type": "var", "name": var_name, "shared_by": funcs_touching}
-                    x_off += 200
-            y_offset += 70
+                    x_off += aw + 160 
+            y_offset += 60
 
         def on_canvas_click(event):
             item = canvas.find_withtag("current")
@@ -580,24 +690,24 @@ class AetherEnterpriseIDE:
         if hasattr(self, "hud"): self.hud.destroy()
         if hasattr(self, "master_pane"): self.master_pane.destroy()
 
-        self.hud = tk.Frame(self.root, bg=self.ide_theme["sidebar"], height=45, bd=0)
+        self.hud = tk.Frame(self.root, bg=self.ide_theme["sidebar"], height=55, bd=0)
         self.hud.pack(fill=tk.X, side=tk.TOP)
         self.hud.pack_propagate(False)
         
-        tk.Label(self.hud, text="AETHER STUDIO V40 QUANTUM", font=("Segoe UI", 11, "bold"), fg=self.ide_theme["text"], bg=self.ide_theme["sidebar"]).pack(side=tk.LEFT, padx=15)
-        self.btn_undo = ToolbarButton(self.hud, text="⮌ Undo", font=("Segoe UI", 9), bg=self.ide_theme["sidebar"], fg=self.ide_theme["text"], hover_bg=self.ide_theme["panel"], command=self.undo)
+        tk.Label(self.hud, text="AETHER STUDIO V45 QUANTUM", font=("Segoe UI", 12, "bold"), fg=self.ide_theme["text"], bg=self.ide_theme["sidebar"]).pack(side=tk.LEFT, padx=15)
+        self.btn_undo = ToolbarButton(self.hud, text="⮌ Undo", font=("Segoe UI", 9, "bold"), bg=self.ide_theme["sidebar"], fg=self.ide_theme["text"], hover_bg=self.ide_theme["panel"], command=self.undo, padx=10)
         self.btn_undo.pack(side=tk.LEFT, padx=2)
-        self.btn_redo = ToolbarButton(self.hud, text="⮎ Redo", font=("Segoe UI", 9), bg=self.ide_theme["sidebar"], fg=self.ide_theme["text"], hover_bg=self.ide_theme["panel"], command=self.redo)
+        self.btn_redo = ToolbarButton(self.hud, text="⮎ Redo", font=("Segoe UI", 9, "bold"), bg=self.ide_theme["sidebar"], fg=self.ide_theme["text"], hover_bg=self.ide_theme["panel"], command=self.redo, padx=10)
         self.btn_redo.pack(side=tk.LEFT, padx=2)
         self.update_chronos_ui()
 
-        ToolbarButton(self.hud, text="Compile App ▶", bg=self.ide_theme["accent"], hover_bg=self.ide_theme["accent_hover"], fg="white", font=("Segoe UI", 9, "bold"), command=self.execute_build).pack(side=tk.RIGHT, padx=(2, 15), pady=8)
+        ToolbarButton(self.hud, text="Compile App ▶", bg=self.ide_theme["accent"], hover_bg=self.ide_theme["accent_hover"], fg="white", font=("Segoe UI", 9, "bold"), command=self.execute_build, padx=15, pady=8).pack(side=tk.RIGHT, padx=(2, 15), pady=8)
         self.build_target_var = tk.StringVar(value="Python (MVC Architecture)")
         self.build_cb = ttk.Combobox(self.hud, textvariable=self.build_target_var, values=list(self.export_builders.keys()), state="readonly", width=25)
-        self.build_cb.pack(side=tk.RIGHT, padx=5, pady=10)
+        self.build_cb.pack(side=tk.RIGHT, padx=5, pady=15)
         tk.Label(self.hud, text="Architecture:", bg=self.ide_theme["sidebar"], fg=self.ide_theme["text_dim"], font=("Segoe UI", 9)).pack(side=tk.RIGHT)
 
-        self.master_pane = tk.PanedWindow(self.root, orient=tk.HORIZONTAL, bg=self.ide_theme["bg"], sashwidth=4)
+        self.master_pane = tk.PanedWindow(self.root, orient=tk.HORIZONTAL, bg=self.ide_theme["bg"], sashwidth=2, bd=0)
         self.master_pane.pack(fill=tk.BOTH, expand=True)
         self.build_left_pane()
         self.build_center_pane()
@@ -606,58 +716,67 @@ class AetherEnterpriseIDE:
     def build_left_pane(self):
         self.left_pane = tk.Frame(self.master_pane, bg=self.ide_theme["surface"])
         self.master_pane.add(self.left_pane, width=280)
-        left_split = tk.PanedWindow(self.left_pane, orient=tk.VERTICAL, bg=self.ide_theme["bg"], sashwidth=4)
+        left_split = tk.PanedWindow(self.left_pane, orient=tk.VERTICAL, bg=self.ide_theme["bg"], sashwidth=2, bd=0)
         left_split.pack(fill=tk.BOTH, expand=True)
 
         self.toolbox = tk.Frame(left_split, bg=self.ide_theme["surface"])
         left_split.add(self.toolbox, height=500)
-        tk.Label(self.toolbox, text=" TOOLBOX", bg=self.ide_theme["panel"], fg=self.ide_theme["text"], font=("Segoe UI", 9, "bold"), anchor="w").pack(fill=tk.X)
+        tk.Label(self.toolbox, text=" TOOLBOX", bg=self.ide_theme["panel"], fg=self.ide_theme["text"], font=("Segoe UI", 10, "bold"), anchor="w", pady=6).pack(fill=tk.X)
         
-        self.tool_scroll = tk.Canvas(self.toolbox, bg=self.ide_theme["surface"], highlightthickness=0)
+        tool_scroll_y = ttk.Scrollbar(self.toolbox, orient="vertical")
+        tool_scroll_y.pack(side="right", fill="y")
+        
+        self.tool_scroll = tk.Canvas(self.toolbox, bg=self.ide_theme["surface"], highlightthickness=0, yscrollcommand=tool_scroll_y.set)
         self.tool_content = tk.Frame(self.tool_scroll, bg=self.ide_theme["surface"])
-        self.tool_scroll.create_window((0, 0), window=self.tool_content, anchor="nw", width=260)
+        self.tool_scroll.create_window((0, 0), window=self.tool_content, anchor="nw", width=250)
         self.tool_scroll.pack(side="left", fill="both", expand=True)
+        tool_scroll_y.config(command=self.tool_scroll.yview)
         self.tool_content.bind("<Configure>", lambda e: self.tool_scroll.configure(scrollregion=self.tool_scroll.bbox("all")))
         self.render_toolbox()
 
         self.hierarchy = tk.Frame(left_split, bg=self.ide_theme["surface"])
         left_split.add(self.hierarchy, height=300)
-        tk.Label(self.hierarchy, text=" DOCUMENT OUTLINE", bg=self.ide_theme["panel"], fg=self.ide_theme["text"], font=("Segoe UI", 9, "bold"), anchor="w").pack(fill=tk.X)
+        tk.Label(self.hierarchy, text=" DOCUMENT OUTLINE", bg=self.ide_theme["panel"], fg=self.ide_theme["text"], font=("Segoe UI", 10, "bold"), anchor="w", pady=6).pack(fill=tk.X)
         
         self.tree = ttk.Treeview(self.hierarchy, columns=("Type", "Vis"), show="tree headings")
         self.tree.heading("#0", text="ID"); self.tree.column("#0", width=120)
         self.tree.heading("Type", text="Class"); self.tree.column("Type", width=70)
         self.tree.heading("Vis", text="Vis"); self.tree.column("Vis", width=40)
-        self.tree.pack(fill=tk.BOTH, expand=True, padx=2, pady=2)
+        
+        scroll_y = ttk.Scrollbar(self.hierarchy, orient="vertical", command=self.tree.yview)
+        self.tree.configure(yscrollcommand=scroll_y.set)
+        scroll_y.pack(side="right", fill="y")
+        self.tree.pack(side="left", fill="both", expand=True, padx=2, pady=2)
+        
         self.tree.bind("<<TreeviewSelect>>", self.on_tree_select)
-        ToolbarButton(self.hierarchy, text="Delete Selected", bg=self.ide_theme["danger"], hover_bg="#e81123", fg="white", font=("Segoe UI", 9, "bold"), command=self.delete_component).pack(fill=tk.X)
+        ToolbarButton(self.hierarchy, text="Delete Selected", bg=self.ide_theme["danger"], hover_bg="#DC2626", fg="white", font=("Segoe UI", 9, "bold"), command=self.delete_component, pady=8).pack(fill=tk.X)
 
     def render_toolbox(self):
         for w in self.tool_content.winfo_children(): w.destroy()
         
-        tk.Label(self.tool_content, text=" STANDARD ELEMENTS", bg=self.ide_theme["surface"], fg=self.ide_theme["text_dim"], font=("Segoe UI", 8, "bold"), anchor="w").pack(fill=tk.X, pady=(5, 5), padx=5)
+        tk.Label(self.tool_content, text=" STANDARD ELEMENTS", bg=self.ide_theme["surface"], fg=self.ide_theme["text_dim"], font=("Segoe UI", 8, "bold"), anchor="w").pack(fill=tk.X, pady=(10, 5), padx=5)
         for c, data in WIDGET_MAP.items():
-            ToolbarButton(self.tool_content, text=f"{data['icon']} {c}", command=lambda x=c: self.add_component(x), bg=self.ide_theme["surface"], hover_bg=self.ide_theme["panel"], fg=self.ide_theme["text"], font=("Segoe UI", 10), relief="flat", anchor="w", padx=20).pack(fill=tk.X, pady=1)
+            ToolbarButton(self.tool_content, text=f"{data['icon']} {c}", command=lambda x=c: self.add_component(x), bg=self.ide_theme["surface"], hover_bg=self.ide_theme["panel"], fg=self.ide_theme["text"], font=("Segoe UI", 10), relief="flat", anchor="w", padx=20, pady=4).pack(fill=tk.X, pady=1)
 
         tk.Label(self.tool_content, text=" MACROS", bg=self.ide_theme["surface"], fg=self.ide_theme["text_dim"], font=("Segoe UI", 8, "bold"), anchor="w").pack(fill=tk.X, pady=(15, 5), padx=5)
-        ToolbarButton(self.tool_content, text="[+] System Dashboard", command=self.macro_sysinfo, bg=self.ide_theme["surface"], hover_bg=self.ide_theme["panel"], fg=self.ide_theme["text"], font=("Segoe UI", 9), relief="flat", anchor="w", padx=20).pack(fill=tk.X, pady=1)
-        ToolbarButton(self.tool_content, text="[+] File Upload Picker", command=self.macro_file_upload, bg=self.ide_theme["surface"], hover_bg=self.ide_theme["panel"], fg=self.ide_theme["text"], font=("Segoe UI", 9), relief="flat", anchor="w", padx=20).pack(fill=tk.X, pady=1)
+        ToolbarButton(self.tool_content, text="[+] System Dashboard", command=self.macro_sysinfo, bg=self.ide_theme["surface"], hover_bg=self.ide_theme["panel"], fg=self.ide_theme["text"], font=("Segoe UI", 9), relief="flat", anchor="w", padx=20, pady=4).pack(fill=tk.X, pady=1)
+        ToolbarButton(self.tool_content, text="[+] File Upload Picker", command=self.macro_file_upload, bg=self.ide_theme["surface"], hover_bg=self.ide_theme["panel"], fg=self.ide_theme["text"], font=("Segoe UI", 9), relief="flat", anchor="w", padx=20, pady=4).pack(fill=tk.X, pady=1)
         
         if self.custom_templates:
             tk.Label(self.tool_content, text=" CUSTOM PREFABS", bg=self.ide_theme["surface"], fg=self.ide_theme["accent"], font=("Segoe UI", 8, "bold"), anchor="w").pack(fill=tk.X, pady=(15, 5), padx=5)
             for t_name in self.custom_templates.keys():
-                ToolbarButton(self.tool_content, text=f"📦 {t_name}", command=lambda n=t_name: self.load_prefab_into_matrix(n), bg=self.ide_theme["surface"], hover_bg=self.ide_theme["panel"], fg=self.ide_theme["text"], font=("Segoe UI", 9), relief="flat", anchor="w", padx=20).pack(fill=tk.X, pady=1)
+                ToolbarButton(self.tool_content, text=f"📦 {t_name}", command=lambda n=t_name: self.load_prefab_into_matrix(n), bg=self.ide_theme["surface"], hover_bg=self.ide_theme["panel"], fg=self.ide_theme["text"], font=("Segoe UI", 9), relief="flat", anchor="w", padx=20, pady=4).pack(fill=tk.X, pady=1)
 
     def build_center_pane(self):
         self.center_pane = tk.Frame(self.master_pane, bg=self.ide_theme["bg"])
         self.master_pane.add(self.center_pane, width=900)
-        self.tab_header = tk.Frame(self.center_pane, bg=self.ide_theme["panel"], height=35)
+        self.tab_header = tk.Frame(self.center_pane, bg=self.ide_theme["panel"], height=40)
         self.tab_header.pack(fill=tk.X)
         self.tab_header.pack_propagate(False)
-        self.btn_design = tk.Button(self.tab_header, text="Canvas View", bg=self.ide_theme["surface"], fg=self.ide_theme["accent"], relief="flat", font=("Segoe UI", 9, "bold"), command=lambda: self.switch_center_tab(0))
-        self.btn_design.pack(side=tk.LEFT, padx=2, fill=tk.Y)
-        self.btn_code = tk.Button(self.tab_header, text="Source Logic", bg=self.ide_theme["panel"], fg=self.ide_theme["text_dim"], relief="flat", font=("Segoe UI", 9), command=lambda: self.switch_center_tab(1))
-        self.btn_code.pack(side=tk.LEFT, padx=2, fill=tk.Y)
+        self.btn_design = tk.Button(self.tab_header, text="Canvas View", bg=self.ide_theme["surface"], fg=self.ide_theme["accent"], bd=0, relief="flat", font=("Segoe UI", 10, "bold"), command=lambda: self.switch_center_tab(0), padx=15)
+        self.btn_design.pack(side=tk.LEFT, padx=0, fill=tk.Y)
+        self.btn_code = tk.Button(self.tab_header, text="Source Logic", bg=self.ide_theme["panel"], fg=self.ide_theme["text_dim"], bd=0, relief="flat", font=("Segoe UI", 10), command=lambda: self.switch_center_tab(1), padx=15)
+        self.btn_code.pack(side=tk.LEFT, padx=0, fill=tk.Y)
         
         self.center_content = tk.Frame(self.center_pane, bg=self.ide_theme["bg"])
         self.center_content.pack(fill=tk.BOTH, expand=True)
@@ -665,14 +784,15 @@ class AetherEnterpriseIDE:
         self.view_designer = tk.Frame(self.center_content, bg=self.ide_theme["bg"])
         self.res_label = tk.Label(self.view_designer, text="", bg=self.ide_theme["bg"], fg=self.ide_theme["text_dim"], font=("Segoe UI", 9))
         self.res_label.pack(pady=5)
-        self.viewport_frame = tk.Frame(self.view_designer, bg=self.app_theme["app_bg"], bd=0, highlightthickness=1, highlightbackground=self.ide_theme["text_dim"])
+        self.viewport_frame = tk.Frame(self.view_designer, bg=self.app_theme["app_bg"], bd=0, highlightthickness=1, highlightbackground=self.ide_theme["panel"])
         self.viewport_frame.place(relx=0.5, rely=0.5, anchor="center")
         self.workspace = tk.Canvas(self.viewport_frame, bg=self.app_theme["app_bg"], highlightthickness=0)
         self.workspace.place(relx=0, rely=0, relwidth=1, relheight=1)
         self.view_designer.pack(fill=tk.BOTH, expand=True)
+        self.workspace.bind("<Configure>", lambda e: self.draw_grid())
 
-        self.view_code = tk.Frame(self.center_content, bg="#1e1e1e")
-        self.code_editor = scrolledtext.ScrolledText(self.view_code, bg="#1e1e1e", fg="#d4d4d4", font=("Consolas", 11), insertbackground="white", bd=0)
+        self.view_code = tk.Frame(self.center_content, bg="#0B0F19")
+        self.code_editor = scrolledtext.ScrolledText(self.view_code, bg="#0B0F19", fg="#F9FAFB", font=("Consolas", 11), insertbackground="white", bd=0, highlightthickness=0)
         self.code_editor.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
         self.code_editor.bind("<KeyRelease>", lambda e: self.schedule_highlight(self.code_editor, ("Consolas", 11)))
         self.root.after(100, self.update_viewport_scale)
@@ -692,8 +812,8 @@ class AetherEnterpriseIDE:
             
             self.view_code.pack_forget()
             self.view_designer.pack(fill=tk.BOTH, expand=True)
-            self.btn_design.config(bg=self.ide_theme["surface"], fg=self.ide_theme["accent"], font=("Segoe UI", 9, "bold"))
-            self.btn_code.config(bg=self.ide_theme["panel"], fg=self.ide_theme["text_dim"], font=("Segoe UI", 9))
+            self.btn_design.config(bg=self.ide_theme["surface"], fg=self.ide_theme["accent"], font=("Segoe UI", 10, "bold"))
+            self.btn_code.config(bg=self.ide_theme["panel"], fg=self.ide_theme["text_dim"], font=("Segoe UI", 10, "normal"))
         else:
             self.code_editor.delete(1.0, tk.END)
             if self.build_target_var.get() == "Python (MVC Architecture)":
@@ -703,8 +823,8 @@ class AetherEnterpriseIDE:
             self.highlight_syntax(self.code_editor, ("Consolas", 11))
             self.view_designer.pack_forget()
             self.view_code.pack(fill=tk.BOTH, expand=True)
-            self.btn_code.config(bg=self.ide_theme["surface"], fg=self.ide_theme["accent"], font=("Segoe UI", 9, "bold"))
-            self.btn_design.config(bg=self.ide_theme["panel"], fg=self.ide_theme["text_dim"], font=("Segoe UI", 9))
+            self.btn_code.config(bg=self.ide_theme["surface"], fg=self.ide_theme["accent"], font=("Segoe UI", 10, "bold"))
+            self.btn_design.config(bg=self.ide_theme["panel"], fg=self.ide_theme["text_dim"], font=("Segoe UI", 10, "normal"))
 
     def build_right_pane(self):
         self.right_pane = tk.Frame(self.master_pane, bg=self.ide_theme["surface"])
@@ -723,7 +843,7 @@ class AetherEnterpriseIDE:
         self.right_tabs.add(self.tab_app_theme, text=" Config ")
 
         self.prop_scroll = scrolledtext.ScrolledText(self.tab_props, bg=self.ide_theme["surface"], bd=0, highlightthickness=0, fg=self.ide_theme["text"])
-        self.prop_scroll.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+        self.prop_scroll.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
         self.layout_frame = tk.Frame(self.tab_layout, bg=self.ide_theme["surface"])
         self.layout_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
         self.layout_entries = {}
@@ -749,7 +869,7 @@ class AetherEnterpriseIDE:
         self.workspace.delete("grid")
         if not self.metadata.get("show_grid", True): return
         w, h = self.viewport_frame.winfo_width(), self.viewport_frame.winfo_height()
-        grid_size = self.metadata["grid_size"]
+        grid_size = self.metadata.get("grid_size", 0.05)
         if grid_size < 0.02: return 
         x = 0.0
         while x <= w:
@@ -759,15 +879,24 @@ class AetherEnterpriseIDE:
         while y <= h:
             self.workspace.create_line(0, int(y), w, int(y), fill=self.ide_theme["grid"], tags="grid")
             y += h * grid_size
+        self.workspace.tag_lower("grid")
 
     def get_comp_by_id(self, uid):
-        return self.components.get(uid, None) # O(1) Hash map lookup
+        return self.components.get(uid, None) 
 
     def add_component(self, c_type, override_props=None, override_layout=None, set_parent="root"):
         idx = len(self.components)
         uid = f"{c_type.lower()}_{idx}_{uuid.uuid4().hex[:4]}"
-        relw = 0.3 if c_type in ["Entry", "Button", "Scale", "Combobox"] else (0.8 if c_type in ["Frame", "Canvas", "Console", "Image"] else 0.2)
-        relh = 0.06 if c_type not in ["Frame", "Text", "Canvas", "Console", "Image"] else 0.4
+        
+        grid = max(0.01, self.metadata.get("grid_size", 0.05))
+        raw_relw = 0.3 if c_type in ["Entry", "Button", "Scale", "Combobox"] else (0.8 if c_type in ["Frame", "Canvas", "Console", "Image"] else 0.2)
+        raw_relh = 0.06 if c_type not in ["Frame", "Text", "Canvas", "Console", "Image"] else 0.4
+        
+        if c_type == "Padding (1u)":
+            raw_relw, raw_relh = grid, grid
+            
+        relw = max(grid, round(raw_relw / grid) * grid)
+        relh = max(grid, round(raw_relh / grid) * grid)
         
         conf = WIDGET_MAP[c_type]
         props = {}
@@ -810,7 +939,6 @@ class AetherEnterpriseIDE:
         for w in self.event_frame.winfo_children(): w.destroy()
 
     def generate_component_hash(self, comp):
-        # O(K) Engine core: SHA-1 identity hash for state tracking
         state_str = json.dumps({
             "props": comp["props"], 
             "layout": comp["layout"], 
@@ -820,11 +948,8 @@ class AetherEnterpriseIDE:
 
     # --- O(K) VDOM RECONCILIATION ENGINE ---
     def refresh_all(self):
-        # 1. Sync Treeview efficiently
         current_ids = set(self.components.keys())
-        tree_ids = set(self.tree.get_children(''))
         
-        # Recursively get all nodes to handle hierarchy
         def get_all_tree_nodes(node=''):
             nodes = set()
             for child in self.tree.get_children(node):
@@ -847,16 +972,14 @@ class AetherEnterpriseIDE:
                 try:
                     self.tree.insert(pid, "end", iid=c["id"], text=text_val, values=(c['type'], vis))
                     self.tree.item(c["id"], open=True)
-                except tk.TclError: pass # Parent not ready yet
+                except tk.TclError: pass 
             else:
                 self.tree.item(c["id"], text=text_val, values=(c['type'], vis))
-                # If parent changed, move it
                 current_pid = self.tree.parent(c["id"])
                 if current_pid != pid:
                     try: self.tree.move(c["id"], pid, "end")
                     except tk.TclError: pass
 
-        # Depth-based sort for tree and rendering hierarchy
         def get_depth(c_id, depth=0):
             c = self.get_comp_by_id(c_id)
             if not c or c["layout"].get("parent", "root") == "root": return depth
@@ -865,7 +988,6 @@ class AetherEnterpriseIDE:
         sorted_comps = sorted(self.components.values(), key=lambda x: get_depth(x["id"]))
         for c in sorted_comps: insert_or_update_tree_node(c)
 
-        # 2. Reconcile Live Widgets (O(K) Diffing)
         live_ids = set(self.live_widgets.keys())
         for uid in live_ids - current_ids:
             self.live_widgets[uid].destroy()
@@ -876,18 +998,20 @@ class AetherEnterpriseIDE:
             uid = c["id"]
             new_hash = self.generate_component_hash(c)
             
-            # $O(1)$ Skip if identical
             if uid in self.live_widgets and self.vdom_hashes.get(uid) == new_hash:
                 continue 
 
-            # Create or Update
             is_new = uid not in self.live_widgets
             cls = WIDGET_MAP[c['type']]["class"]
+            mod = WIDGET_MAP[c['type']]["module"]
             
             safe_props = {}
             text_content, img_path = None, None
             for k, v in c['props'].items():
                 if k == 'command': continue
+                # HOTFIX: Strip invalid kwargs from ttk widgets before passing to config
+                if mod == "ttk" and k in UNSUPPORTED_TTK_PROPS: continue
+                
                 if c['type'] in ['Text', 'Console'] and k == 'text': text_content = v; continue
                 if c['type'] == 'Combobox' and k == 'values':
                     safe_props[k] = tuple([x.strip() for x in str(v).split(',') if x.strip()]); continue
@@ -901,13 +1025,12 @@ class AetherEnterpriseIDE:
             if is_new:
                 obj = cls(parent_widget, **safe_props)
                 self.live_widgets[uid] = obj
-                # Bind Events
                 obj.bind("<Button-1>", lambda e, id=uid: self.on_widget_press(e, id))
                 obj.bind("<B1-Motion>", lambda e, id=uid: self.on_widget_drag(e, id))
                 obj.bind("<ButtonRelease-1>", lambda e, id=uid: self.on_widget_release(e, id))
+                obj.bind("<Motion>", lambda e, id=uid: self.on_widget_motion(e, id))
             else:
                 obj = self.live_widgets[uid]
-                # If parent changed, Tkinter requires recreation. For simplicity, we fallback to recreate.
                 if obj.master != parent_widget:
                     obj.destroy()
                     obj = cls(parent_widget, **safe_props)
@@ -915,8 +1038,9 @@ class AetherEnterpriseIDE:
                     obj.bind("<Button-1>", lambda e, id=uid: self.on_widget_press(e, id))
                     obj.bind("<B1-Motion>", lambda e, id=uid: self.on_widget_drag(e, id))
                     obj.bind("<ButtonRelease-1>", lambda e, id=uid: self.on_widget_release(e, id))
+                    obj.bind("<Motion>", lambda e, id=uid: self.on_widget_motion(e, id))
                 else:
-                    obj.config(**safe_props) # O(K) in-place config update
+                    obj.config(**safe_props) 
 
             if c['type'] in ['Text', 'Console'] and text_content is not None:
                 obj.delete("1.0", tk.END)
@@ -937,34 +1061,89 @@ class AetherEnterpriseIDE:
 
             self.vdom_hashes[uid] = new_hash
 
+    # --- EDGE / CORNER RESIZING SYSTEM ---
+    def on_widget_motion(self, event, uid):
+        if self.drag_data.get("active", False) or uid not in self.live_widgets: return
+        w = self.live_widgets[uid].winfo_width()
+        h = self.live_widgets[uid].winfo_height()
+        margin = 10
+        
+        if event.x >= w - margin and event.y >= h - margin:
+            self.live_widgets[uid].config(cursor="bottom_right_corner")
+        elif event.x >= w - margin:
+            self.live_widgets[uid].config(cursor="right_side")
+        elif event.y >= h - margin:
+            self.live_widgets[uid].config(cursor="bottom_side")
+        else:
+            c = self.get_comp_by_id(uid)
+            if c:
+                default_cursor = WIDGET_MAP[c['type']]['props'].get('cursor', 'arrow')
+                self.live_widgets[uid].config(cursor=default_cursor)
+
     def on_widget_press(self, event, uid):
         self.selected_id = uid
         self.tree.selection_set(uid)
         self.render_inspector()
-        self.drag_data.update({"x": event.x_root, "y": event.y_root, "active": True})
-
-    def on_widget_drag(self, event, uid):
-        if not self.drag_data["active"]: return
+        
         comp = self.get_comp_by_id(uid)
-        dx, dy = event.x_root - self.drag_data["x"], event.y_root - self.drag_data["y"]
+        w = self.live_widgets[uid].winfo_width()
+        h = self.live_widgets[uid].winfo_height()
+        margin = 10
+        
+        mode = 'drag'
+        if event.x >= w - margin and event.y >= h - margin: mode = 'resize_se'
+        elif event.x >= w - margin: mode = 'resize_e'
+        elif event.y >= h - margin: mode = 'resize_s'
+        
         parent_id = comp["layout"].get("parent", "root")
         parent_widget = self.live_widgets.get(parent_id) if parent_id != "root" else self.viewport_frame
         pw, ph = parent_widget.winfo_width(), parent_widget.winfo_height()
-        new_rx = comp["layout"]["relx"] + (dx / pw if pw else 0)
-        new_ry = comp["layout"]["rely"] + (dy / ph if ph else 0)
-        comp["layout"].update({"relx": new_rx, "rely": new_ry})
-        self.live_widgets[uid].place(relx=new_rx, rely=new_ry)
-        self.drag_data.update({"x": event.x_root, "y": event.y_root})
-        self.update_layout_entries()
+        
+        self.drag_data = {
+            "x": event.x_root, "y": event.y_root, 
+            "active": True, "mode": mode,
+            "orig_layout": copy.deepcopy(comp["layout"]),
+            "pw": pw, "ph": ph
+        }
+
+    def on_widget_drag(self, event, uid):
+        if not self.drag_data.get("active", False): return
+        comp = self.get_comp_by_id(uid)
+        mode = self.drag_data["mode"]
+        
+        dx = event.x_root - self.drag_data["x"]
+        dy = event.y_root - self.drag_data["y"]
+        pw, ph = self.drag_data["pw"], self.drag_data["ph"]
+        rdx = (dx / pw) if pw else 0
+        rdy = (dy / ph) if ph else 0
+        
+        orig = self.drag_data["orig_layout"]
+        if mode == 'drag':
+            comp["layout"].update({"relx": orig["relx"] + rdx, "rely": orig["rely"] + rdy})
+        elif mode == 'resize_se':
+            comp["layout"].update({"relw": max(0.01, orig["relw"] + rdx), "relh": max(0.01, orig["relh"] + rdy)})
+        elif mode == 'resize_e':
+            comp["layout"].update({"relw": max(0.01, orig["relw"] + rdx)})
+        elif mode == 'resize_s':
+            comp["layout"].update({"relh": max(0.01, orig["relh"] + rdy)})
+
+        l = comp["layout"]
+        self.live_widgets[uid].place(relx=l["relx"], rely=l["rely"], relwidth=l["relw"], relheight=l["relh"])
 
     def on_widget_release(self, event, uid):
         self.drag_data["active"] = False
         comp = self.get_comp_by_id(uid)
-        grid = self.metadata["grid_size"]
-        if grid > 0.01 and self.metadata.get("show_grid", True):
+        grid = max(0.01, self.metadata.get("grid_size", 0.05))
+        
+        if self.metadata.get("show_grid", True):
             l = comp["layout"]
-            l["relx"], l["rely"] = round(l["relx"] / grid) * grid, round(l["rely"] / grid) * grid
-            self.live_widgets[uid].place(relx=l["relx"], rely=l["rely"])
+            l["relx"] = round(l["relx"] / grid) * grid
+            l["rely"] = round(l["rely"] / grid) * grid
+            l["relw"] = max(grid, round(l["relw"] / grid) * grid)
+            l["relh"] = max(grid, round(l["relh"] / grid) * grid)
+            
+        l = comp["layout"]
+        self.live_widgets[uid].place(relx=l["relx"], rely=l["rely"], relwidth=l["relw"], relheight=l["relh"])
         self.vdom_hashes[uid] = self.generate_component_hash(comp)
         self.update_layout_entries()
         self.push_history() 
@@ -1011,12 +1190,12 @@ class AetherEnterpriseIDE:
         for key, val in comp["props"].items():
             if key in ["relief", "cursor", "bd", "font"]: continue 
             f = tk.Frame(self.prop_scroll, bg=self.ide_theme["surface"])
-            f.pack(fill=tk.X, pady=2)
+            f.pack(fill=tk.X, pady=4)
             tk.Label(f, text=key, bg=self.ide_theme["surface"], fg=self.ide_theme["text_dim"], width=10, anchor="w", font=("Segoe UI", 9)).pack(side=tk.LEFT)
             if key in ["bg", "fg", "insertbackground", "activebackground", "activeforeground"] or "color" in key.lower():
                 c_val = val if str(val).startswith("#") else self.app_theme.get(val, "#ffffff")
-                btn = tk.Button(f, text="■", fg=c_val, font=("Arial", 10), bg=self.ide_theme["panel"], relief="flat", command=lambda k=key, cv=c_val: self.pick_prop_color(k, cv))
-                btn.pack(side=tk.RIGHT, padx=(2, 0))
+                btn = tk.Button(f, text="■", fg=c_val, font=("Arial", 10), bg=self.ide_theme["panel"], relief="flat", bd=0, command=lambda k=key, cv=c_val: self.pick_prop_color(k, cv))
+                btn.pack(side=tk.RIGHT, padx=(4, 0))
             e = ttk.Entry(f, font=("Segoe UI", 9))
             e.insert(0, str(val))
             e.pack(side=tk.LEFT, fill=tk.X, expand=True)
@@ -1031,7 +1210,7 @@ class AetherEnterpriseIDE:
             wt = f_val[2] if len(f_val) > 2 else "normal"
             ff = tk.Frame(self.prop_scroll, bg=self.ide_theme["surface"])
             ff.pack(fill=tk.X, pady=2)
-            ttk.Combobox(ff, values=["Segoe UI", "Arial", "Consolas", "Courier New", "Verdana"], width=12).pack(side=tk.LEFT, padx=1)
+            ttk.Combobox(ff, values=["Segoe UI", "Arial", "Consolas", "Courier New", "Verdana", "Inter", "Roboto"], width=12).pack(side=tk.LEFT, padx=1)
             ff.winfo_children()[0].set(fam)
             ttk.Combobox(ff, values=[8, 9, 10, 11, 12, 14, 16, 20, 24], width=4).pack(side=tk.LEFT, padx=1)
             ff.winfo_children()[1].set(sz)
@@ -1044,22 +1223,25 @@ class AetherEnterpriseIDE:
                 child.bind("<<ComboboxSelected>>", update_font)
                 child.bind("<FocusOut>", update_font)
 
-        tk.Label(self.prop_scroll, text="Shape & Borders", bg=self.ide_theme["surface"], fg=self.ide_theme["text"], font=("Segoe UI", 9, "bold")).pack(anchor="w", pady=(15, 5))
-        rf = tk.Frame(self.prop_scroll, bg=self.ide_theme["surface"])
-        rf.pack(fill=tk.X, pady=2)
-        tk.Label(rf, text="Relief", bg=self.ide_theme["surface"], fg=self.ide_theme["text_dim"], width=10, anchor="w", font=("Segoe UI", 9)).pack(side=tk.LEFT)
-        relief_cb = ttk.Combobox(rf, values=["flat", "raised", "sunken", "solid", "ridge", "groove"], state="readonly")
-        relief_cb.set(comp["props"].get("relief", "flat"))
-        relief_cb.pack(side=tk.LEFT, fill=tk.X, expand=True)
-        relief_cb.bind("<<ComboboxSelected>>", lambda ev: self.live_prop_update("relief", relief_cb.get(), push_only=True))
+        # HOTFIX: Hide Shape & Borders entirely for TTK widgets as they reject these options.
+        mod = WIDGET_MAP[comp["type"]]["module"]
+        if mod != "ttk":
+            tk.Label(self.prop_scroll, text="Shape & Borders", bg=self.ide_theme["surface"], fg=self.ide_theme["text"], font=("Segoe UI", 9, "bold")).pack(anchor="w", pady=(15, 5))
+            rf = tk.Frame(self.prop_scroll, bg=self.ide_theme["surface"])
+            rf.pack(fill=tk.X, pady=2)
+            tk.Label(rf, text="Relief", bg=self.ide_theme["surface"], fg=self.ide_theme["text_dim"], width=10, anchor="w", font=("Segoe UI", 9)).pack(side=tk.LEFT)
+            relief_cb = ttk.Combobox(rf, values=["flat", "raised", "sunken", "solid", "ridge", "groove"], state="readonly")
+            relief_cb.set(comp["props"].get("relief", "flat"))
+            relief_cb.pack(side=tk.LEFT, fill=tk.X, expand=True)
+            relief_cb.bind("<<ComboboxSelected>>", lambda ev: self.live_prop_update("relief", relief_cb.get(), push_only=True))
 
-        bf = tk.Frame(self.prop_scroll, bg=self.ide_theme["surface"])
-        bf.pack(fill=tk.X, pady=2)
-        tk.Label(bf, text="Border (bd)", bg=self.ide_theme["surface"], fg=self.ide_theme["text_dim"], width=10, anchor="w", font=("Segoe UI", 9)).pack(side=tk.LEFT)
-        bd_e = ttk.Entry(bf, font=("Segoe UI", 9))
-        bd_e.insert(0, str(comp["props"].get("bd", 0)))
-        bd_e.pack(side=tk.LEFT, fill=tk.X, expand=True)
-        bd_e.bind("<FocusOut>", lambda ev, ent=bd_e: self.live_prop_update("bd", ent.get(), push_only=True))
+            bf = tk.Frame(self.prop_scroll, bg=self.ide_theme["surface"])
+            bf.pack(fill=tk.X, pady=2)
+            tk.Label(bf, text="Border (bd)", bg=self.ide_theme["surface"], fg=self.ide_theme["text_dim"], width=10, anchor="w", font=("Segoe UI", 9)).pack(side=tk.LEFT)
+            bd_e = ttk.Entry(bf, font=("Segoe UI", 9))
+            bd_e.insert(0, str(comp["props"].get("bd", 0)))
+            bd_e.pack(side=tk.LEFT, fill=tk.X, expand=True)
+            bd_e.bind("<FocusOut>", lambda ev, ent=bd_e: self.live_prop_update("bd", ent.get(), push_only=True))
 
         for w in self.layout_frame.winfo_children(): w.destroy()
         self.layout_entries.clear()
@@ -1104,7 +1286,7 @@ class AetherEnterpriseIDE:
 
         ttk.Button(self.layout_frame, text="Restore Default Spacing", command=self.restore_default_layout).pack(fill=tk.X, pady=10)
         if comp["type"] in ["Frame", "Canvas"]:
-            ToolbarButton(self.layout_frame, text="[ Save as Custom Template ]", bg=self.ide_theme["accent"], fg="white", font=("Segoe UI", 9, "bold"), command=self.create_custom_template).pack(fill=tk.X, pady=5)
+            ToolbarButton(self.layout_frame, text="[ Save as Custom Template ]", bg=self.ide_theme["accent"], fg="white", font=("Segoe UI", 9, "bold"), command=self.create_custom_template, pady=6).pack(fill=tk.X, pady=5)
 
         for w in self.event_frame.winfo_children(): w.destroy()
         tk.Label(self.event_frame, text="Inline Event Code", bg=self.ide_theme["surface"], fg=self.ide_theme["text"], font=("Segoe UI", 9, "bold")).pack(anchor="w", pady=(0, 10))
@@ -1115,30 +1297,35 @@ class AetherEnterpriseIDE:
         self.event_cb.set("command")
         self.event_cb.pack(side=tk.LEFT, padx=2)
         ttk.Button(add_f, text="Add Hook", command=lambda: self.add_event_bind(self.event_cb.get(), f"exec_{comp['id']}")).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=2)
-        tk.Frame(self.event_frame, bg=self.ide_theme["panel"], height=1).pack(fill=tk.X, pady=5)
+        tk.Frame(self.event_frame, bg=self.ide_theme["panel"], height=1).pack(fill=tk.X, pady=10)
+        
+        snippets = self.get_component_snippets()
         
         for ev, data in list(comp.get("events", {}).items()):
-            ef = tk.Frame(self.event_frame, bg=self.ide_theme["surface"], bd=1, relief="solid")
-            ef.pack(fill=tk.X, pady=4, padx=2)
+            ef = tk.Frame(self.event_frame, bg=self.ide_theme["surface"], bd=1, highlightthickness=1, highlightbackground=self.ide_theme["panel"])
+            ef.pack(fill=tk.X, pady=6, padx=2)
             header = tk.Frame(ef, bg=self.ide_theme["panel"])
             header.pack(fill=tk.X)
-            tk.Label(header, text=ev, bg=self.ide_theme["panel"], fg=self.ide_theme["text"], font=("Segoe UI", 9, "bold")).pack(side=tk.LEFT, padx=5)
-            tk.Button(header, text="Remove", bg=self.ide_theme["danger"], fg="white", bd=0, font=("Segoe UI", 8), cursor="hand2", command=lambda k=ev: self.remove_event_bind(k)).pack(side=tk.RIGHT, padx=5, pady=2)
+            tk.Label(header, text=ev, bg=self.ide_theme["panel"], fg=self.ide_theme["text"], font=("Segoe UI", 9, "bold")).pack(side=tk.LEFT, padx=8, pady=4)
+            tk.Button(header, text="Remove", bg=self.ide_theme["danger"], fg="white", bd=0, font=("Segoe UI", 8, "bold"), cursor="hand2", command=lambda k=ev: self.remove_event_bind(k)).pack(side=tk.RIGHT, padx=5, pady=2)
             
             tools_f = tk.Frame(ef, bg=self.ide_theme["surface"])
-            tools_f.pack(fill=tk.X, padx=2, pady=2)
-            tk.Label(tools_f, text="Inject ID:", bg=self.ide_theme["surface"], fg=self.ide_theme["text_dim"], font=("Segoe UI", 8)).pack(side=tk.LEFT)
-            ref_cb = ttk.Combobox(tools_f, values=[f"self.{x['id']}" for x in self.components.values()], state="readonly", width=18)
-            ref_cb.pack(side=tk.LEFT, padx=2)
+            tools_f.pack(fill=tk.X, padx=5, pady=5)
+            tk.Label(tools_f, text="Inject:", bg=self.ide_theme["surface"], fg=self.ide_theme["text_dim"], font=("Segoe UI", 8)).pack(side=tk.LEFT)
+            ref_cb = ttk.Combobox(tools_f, values=snippets, state="readonly", width=35)
+            ref_cb.pack(side=tk.LEFT, padx=4, fill=tk.X, expand=True)
             
-            code_area = tk.Text(ef, height=4, bg="#1e1e1e", fg="#d4d4d4", font=("Consolas", 9), insertbackground="white", bd=0)
-            code_area.pack(fill=tk.X, padx=2, pady=2)
+            code_area = tk.Text(ef, height=5, bg="#0B0F19", fg="#F9FAFB", font=("Consolas", 9), insertbackground="white", bd=0)
+            code_area.pack(fill=tk.X, padx=5, pady=(0, 5))
             code_area.insert("1.0", data.get("code", "pass"))
             self.highlight_syntax(code_area, ("Consolas", 9))
             
             def inject_ref_inline(e, rcb=ref_cb, ca=code_area, ev_key=ev):
                 if rcb.get():
-                    ca.insert(tk.INSERT, rcb.get())
+                    current_code = ca.get("1.0", tk.END).strip()
+                    if current_code == "pass":
+                        ca.delete("1.0", tk.END)
+                    ca.insert(tk.INSERT, rcb.get() + "\n")
                     rcb.set('')
                     self.live_event_code_update(ev_key, ca.get("1.0", tk.END).strip())
                     self.schedule_highlight(ca, ("Consolas", 9))
@@ -1166,8 +1353,13 @@ class AetherEnterpriseIDE:
 
     def live_layout_update(self, key, val):
         try:
-            self.get_comp_by_id(self.selected_id)["layout"][key] = float(val)
+            val = float(val)
+            grid = max(0.01, self.metadata.get("grid_size", 0.05))
+            snapped_val = round(val / grid) * grid if self.metadata.get("show_grid", True) else val
+            
+            self.get_comp_by_id(self.selected_id)["layout"][key] = snapped_val
             self.refresh_all(); self.push_history()
+            self.update_layout_entries()
         except ValueError: pass
 
     def update_layout_entries(self):
@@ -1196,6 +1388,14 @@ class AetherEnterpriseIDE:
         if action == 'fx': l["relx"] = 0.0; l["relw"] = 1.0
         if action == 'fy': l["rely"] = 0.0; l["relh"] = 1.0
         if action == 'fxy': l["relx"] = 0.0; l["rely"] = 0.0; l["relw"] = 1.0; l["relh"] = 1.0
+        
+        grid = max(0.01, self.metadata.get("grid_size", 0.05))
+        if self.metadata.get("show_grid", True):
+            l["relx"] = round(l["relx"] / grid) * grid
+            l["rely"] = round(l["rely"] / grid) * grid
+            l["relw"] = max(grid, round(l["relw"] / grid) * grid)
+            l["relh"] = max(grid, round(l["relh"] / grid) * grid)
+            
         self.refresh_all(); self.update_layout_entries(); self.push_history()
 
     def restore_default_layout(self):
@@ -1247,9 +1447,9 @@ class AetherEnterpriseIDE:
         tk.Label(self.tab_app_theme, text="Application Theme Palette", bg=self.ide_theme["surface"], fg=self.ide_theme["text"], font=("Segoe UI", 9, "bold")).pack(anchor="w", pady=(15, 5), padx=10)
         for key, val in self.app_theme.items():
             f = tk.Frame(self.tab_app_theme, bg=self.ide_theme["surface"])
-            f.pack(fill=tk.X, padx=10, pady=2)
+            f.pack(fill=tk.X, padx=10, pady=4)
             tk.Label(f, text=key.replace("app_", "").title(), bg=self.ide_theme["surface"], fg=self.ide_theme["text_dim"], width=12, anchor="w", font=("Segoe UI", 9)).pack(side=tk.LEFT)
-            btn = tk.Button(f, text="■", fg=val, font=("Arial", 12), bg=self.ide_theme["panel"], relief="flat", command=lambda k=key, cv=val: self.pick_app_color(k, cv))
+            btn = tk.Button(f, text="■", fg=val, font=("Arial", 12), bg=self.ide_theme["panel"], relief="flat", bd=0, command=lambda k=key, cv=val: self.pick_app_color(k, cv))
             btn.pack(side=tk.RIGHT, padx=(5, 0))
             e = ttk.Entry(f, font=("Segoe UI", 9))
             e.insert(0, str(val))
@@ -1287,7 +1487,7 @@ class AetherEnterpriseIDE:
             if not self.current_project_file: return
         
         path = self.current_project_file if not autosave else self.current_project_file + ".autosave"
-        payload = {"version": "40.0", "metadata": self.metadata, "app_theme": self.app_theme, "components": list(self.components.values()), "user_code": self.user_code}
+        payload = {"version": "45.0", "metadata": self.metadata, "app_theme": self.app_theme, "components": list(self.components.values()), "user_code": self.user_code}
         with open(path, 'w') as f: json.dump(payload, f, indent=4)
         if not autosave: messagebox.showinfo("Saved", f"Workspace saved to {os.path.basename(path)}")
 
@@ -1316,7 +1516,6 @@ class AetherEnterpriseIDE:
                 self.history_index = -1
                 self.push_history()
                 
-                # Full redraw on load
                 self.vdom_hashes.clear()
                 for w in list(self.live_widgets.values()): w.destroy()
                 self.live_widgets.clear()
@@ -1350,6 +1549,10 @@ class AetherEnterpriseIDE:
             text_val, img_path, cb_vals = None, None, None
             for k, v in c['props'].items():
                 if k == 'command': continue
+                
+                # HOTFIX: Strip incompatible keyword args during code generation
+                if mod == "ttk" and k in UNSUPPORTED_TTK_PROPS: continue
+
                 if c['type'] in ['Text', 'Console'] and k == 'text': text_val = v; continue
                 if c['type'] == 'Combobox' and k == 'values': cb_vals = tuple([x.strip() for x in str(v).split(',') if x.strip()]); continue
                 if c['type'] == 'Image' and k == 'image_path': img_path = str(v); continue
@@ -1405,7 +1608,7 @@ class AetherEnterpriseIDE:
             state_init_lines.append(f"        self.state['{var}'] = tk.StringVar(value='')")
 
         return f"""# ==========================================================
-# AETHER STUDIO ENTERPRISE V40 - QUANTUM BUILD
+# AETHER STUDIO ENTERPRISE V45 - QUANTUM BUILD
 # Application: {self.metadata.get('name', 'App')}
 # Author: {self.metadata.get('author', 'Developer')}
 # Format: Single-File Legacy Architecture
@@ -1460,12 +1663,10 @@ if __name__ == "__main__":
 
     def generate_mvc_code(self):
         sanitized_name = re.sub(r'\W|^(?=\d)', '_', self.metadata.get("name", "App"))
-        
-        # We parse the standard string and modularize it into Model/View/Controller
         single_code = self.generate_code_string()
         
         mvc_code = f"""# ==========================================================
-# AETHER STUDIO ENTERPRISE V40 - QUANTUM BUILD
+# AETHER STUDIO ENTERPRISE V45 - QUANTUM BUILD
 # Application: {self.metadata.get('name', 'App')}
 # Author: {self.metadata.get('author', 'Developer')}
 # Format: Production MVC Architecture
@@ -1512,8 +1713,6 @@ class {sanitized_name}View(tk.Tk):
     def setup_ui(self):
         # View renders components and binds events back to Controller
         pass # Full UI generation is delegated to Controller in this paradigm to maintain component refs.
-        # Note: A pure MVC view would declare components here and accept callbacks.
-        # For this Tkinter generator, Controller and View are tightly coupled.
 
 # --- CONTROLLER ---
 class {sanitized_name}Controller:
@@ -1534,9 +1733,7 @@ class {sanitized_name}Controller:
         self.view.mainloop()
 
 """
-        # Hack to transplant the body methods from single to controller
         methods_part = single_code.split("    def init_reactive_state(self):")[1].split("if __name__ == ")[0]
-        # Replace 'self.' with View bindings where appropriate, but for simplicity we run methods on controller
         mvc_code += "    def init_reactive_state(self):" + methods_part
         
         mvc_code += f"""
@@ -1557,7 +1754,7 @@ if __name__ == "__main__":
         sanitized_name = re.sub(r'\W|^(?=\d)', '_', self.metadata.get("name", "App")) or "CompiledApp"
         fn = f"{sanitized_name}.py"
         with open(fn, "w", encoding="utf-8") as f: f.write(final_code)
-        messagebox.showinfo("Quantum Compilation Complete", f"Application built successfully!\n\nSource Code: {fn}")
+        messagebox.showinfo("Quantum Compilation Complete", f"Application built successfully!\n\nSource Code exported to: {fn}")
 
 if __name__ == "__main__":
     root = tk.Tk()
